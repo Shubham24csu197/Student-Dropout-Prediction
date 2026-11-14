@@ -1,0 +1,18 @@
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements-serve.txt .
+
+RUN pip install --no-cache-dir -r requirements-serve.txt
+
+COPY app.py .
+COPY schemas.py .
+COPY data_contract.json .
+COPY model/ ./model/
+COPY static/ ./static/
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]

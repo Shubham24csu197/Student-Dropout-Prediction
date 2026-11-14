@@ -1,0 +1,182 @@
+
+import pandas as pd
+import pytest
+
+from fastapi.testclient import TestClient
+
+from app import app
+from schemas import (
+    AdmissionRequest,
+    Semester1Request,
+    DATA_CONTRACT
+)
+
+client = TestClient(app)
+
+# Load one real student record for testing
+df = pd.read_csv("data/student_dropout_cleaned.csv")
+student = df.iloc[0]
+
+
+def create_payload(schema):
+    """Create valid JSON input from a real dataset row."""
+
+    payload = {}
+
+    for field in schema.model_fields.values():
+        feature = field.alias
+        value = student[feature]
+        feature_type = DATA_CONTRACT[feature]["type"]
+
+        if feature_type in ("categorical", "ordinal"):
+            payload[feature] = int(value)
+        else:
+            payload[feature] = float(value)
+
+    return payload
+
+
+@pytest.fixture
+def admission_payload():
+    return create_payload(AdmissionRequest)
+
+
+@pytest.fixture
+def semester1_payload():
+    return create_payload(Semester1Request)
+
+
+# TEST 1: Home endpoint
+def test_home_endpoint():
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert response.json()["message"] == (
+        "Student Dropout Prediction API is running!"
+    )
+
+
+# TEST 2: Health endpoint
+def test_health_endpoint():
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "healthy"
+    assert response.json()["model_A"] == "loaded"
+    assert response.json()["model_B"] == "loaded"
+
+
+# TEST 3: Model A prediction
+def test_admission_prediction(admission_payload):
+    response = client.post(
+        "/predict/admission",
+        json=admission_payload
+    )
+
+    assert response.status_code == 200
+
+    result = response.json()
+
+    assert result["model"] == "Model A"
+    assert result["prediction_stage"] == "Admission Time"
+    assert result["prediction"] in [
+        "Dropout", "Enrolled", "Graduate"
+    ]
+
+    probabilities = result["probabilities"]
+
+    assert set(probabilities.keys()) == {
+        "Dropout", "Enrolled", "Graduate"
+    }
+
+    assert sum(probabilities.values()) == pytest.approx(
+        1.0, abs=0.0002
+    )
+
+
+# TEST 4: Model B prediction
+def test_semester1_prediction(semester1_payload):
+    response = client.post(
+        "/predict/semester1",
+        json=semester1_payload
+    )
+
+    assert response.status_code == 200
+
+    result = response.json()
+
+    assert result["model"] == "Model B"
+    assert result["prediction_stage"] == "After First Semester"
+    assert result["prediction"] in [
+        "Dropout", "Enrolled", "Graduate"
+    ]
+
+    probabilities = result["probabilities"]
+
+    assert set(probabilities.keys()) == {
+        "Dropout", "Enrolled", "Graduate"
+    }
+
+    assert sum(probabilities.values()) == pytest.approx(
+        1.0, abs=0.0002
+    )
+
+
+# TEST 5: Invalid age should return HTTP 422
+def test_invalid_age(admission_payload):
+    admission_payload["Age at enrollment"] = 100
+
+    response = client.post(
+        "/predict/admission",
+        json=admission_payload
+    )
+
+    assert response.status_code == 422
+
+
+# TEST 6: Invalid category should return HTTP 422
+def test_invalid_category(admission_payload):
+    admission_payload["Marital status"] = 99
+
+    response = client.post(
+        "/predict/admission",
+        json=admission_payload
+    )
+
+    assert response.status_code == 422
+
+def test_stronger_student_has_higher_graduate_probability(admission_payload):
+    weaker_student = admission_payload.copy()
+    stronger_student = admission_payload.copy()
+
+    # Weaker academic profile
+    weaker_student["Previous qualification (grade)"] = 100.0
+    weaker_student["Admission grade"] = 100.0
+    weaker_student["Age at enrollment"] = 25.0
+    weaker_student["Debtor"] = 1
+    weaker_student["Tuition fees up to date"] = 0
+
+    # Stronger academic profile
+    stronger_student["Previous qualification (grade)"] = 150.0
+    stronger_student["Admission grade"] = 160.0
+    stronger_student["Age at enrollment"] = 20.0
+    stronger_student["Debtor"] = 0
+    stronger_student["Tuition fees up to date"] = 1
+
+    weaker_response = client.post(
+        "/predict/admission",
+        json=weaker_student
+    )
+
+    stronger_response = client.post(
+        "/predict/admission",
+        json=stronger_student
+    )
+
+    assert weaker_response.status_code == 200
+    assert stronger_response.status_code == 200
+
+    weaker_probability = weaker_response.json()["probabilities"]["Graduate"]
+    stronger_probability = stronger_response.json()["probabilities"]["Graduate"]
+
+    assert stronger_probability > weaker_probability

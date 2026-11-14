@@ -116,6 +116,8 @@ function renderResult(target,data){
  order.map(name=>{const val=Number(probs[name]||0);return `<div class="prob"><div class="prob-head"><span>${name}</span><span>${(val*100).toFixed(2)}%</span></div><div class="track"><div class="fill" style="width:${Math.max(0,Math.min(100,val*100))}%"></div></div></div>`;}).join("")+
  `<div class="result-chart"><h3>Your prediction probability chart</h3><div class="chart-wrap"><canvas id="${target}_probabilityChart" role="img" aria-label="Current prediction probabilities"></canvas></div></div>`+
   `<p class="notice">Probabilities are model estimates and should be interpreted as decision-support information, not certainty.</p>`;
+ // Draw the current prediction chart after its canvas has been added to the page.
+ drawPrediction(`${target}_probabilityChart`, probs);
  el.scrollIntoView({behavior:"smooth",block:"start"});
 }
 async function submitPrediction(event,endpoint,resultId){

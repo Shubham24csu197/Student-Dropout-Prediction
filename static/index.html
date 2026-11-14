@@ -22,6 +22,8 @@ main{width:min(1220px,100%);margin:32px auto 48px;padding:0 24px}.page{display:n
 @media(max-width:600px){header{padding:25px 19px 24px}header h1{font-size:28px}header p{font-size:14px}nav{justify-content:flex-start;padding:0 8px;gap:0}nav button{padding:13px 12px;font-size:12px;min-height:51px}main{padding:0 13px;margin:23px auto 34px}.intro{margin-bottom:18px}.intro h2{font-size:23px}.cards{grid-template-columns:1fr;gap:13px;margin:19px 0}.cards .card:last-child{grid-column:auto}.card{min-height:0;padding:19px}.panel,.form-panel{padding:17px;border-radius:15px}.fields{grid-template-columns:1fr;gap:15px}.field label{font-size:13px}.field input,.field select{min-height:52px;font-size:16px}.form-panel{margin:14px 0}.form-actions,form>button{width:100%}.form-panel~button{width:100%}.form-panel h3{font-size:18px}.result{padding:18px}.prediction{font-size:26px}.about-grid{grid-template-columns:1fr}footer{padding:23px 13px 28px}}
 @media(max-width:360px){header{padding-left:15px;padding-right:15px}main{padding:0 10px}nav button{padding-left:10px;padding-right:10px}.intro h2{font-size:21px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+.chart-section{margin-top:22px}.chart-panel{background:#fff;border:1px solid var(--line);border-radius:17px;padding:22px;box-shadow:var(--shadow);min-width:0}.chart-panel h3{margin:0 0 5px;font-size:18px}.chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:18px}.chart-wrap{width:100%;min-height:280px}.chart-wrap canvas{display:block;width:100%;height:280px}.matrix-wrap{overflow-x:auto;margin-top:14px}.confusion{border-collapse:separate;border-spacing:5px;width:100%;min-width:360px;text-align:center}.confusion th{color:var(--muted);font-size:12px;padding:8px 5px}.confusion td{padding:15px 8px;border-radius:9px;font-weight:850}.confusion .diag{background:#dbeafe;color:#1e40af}.confusion .off{background:#f1f5f9;color:#475569}.chart-legend{display:flex;gap:16px;flex-wrap:wrap;margin:8px 0;color:var(--muted);font-size:12px}.legend-dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}.metric-note{font-size:12px;color:var(--muted);line-height:1.6;margin:12px 0 0}.result-chart{margin-top:20px;padding-top:15px;border-top:1px solid var(--line)}@media(max-width:760px){.chart-grid{grid-template-columns:1fr}.chart-panel{padding:17px}.chart-wrap canvas{height:250px}}
 </style>
 </head>
 <body>
@@ -44,7 +46,9 @@ main{width:min(1220px,100%);margin:32px auto 48px;padding:0 24px}.page{display:n
   <div class="card"><div class="eyebrow">Prediction stage 02</div><h3>After first semester</h3><p>Update the estimate using admission details and first-semester academic performance.</p><div class="actions"><button class="primary" onclick="showPage('semester')">Open Model B</button></div></div>
   <div class="card"><div class="eyebrow">Possible outcomes</div><div class="num">03</div><h3>Three classes</h3><p>Dropout · Enrolled · Graduate</p></div>
  </div>
- <div class="panel"><h3>How to use this portal</h3><p class="hint">1. Select a prediction stage. 2. Enter values within the displayed validation ranges. 3. Submit the form. 4. Review the predicted class and class probabilities.</p><div id="apiStatus" class="status">Checking API connection…</div></div>
+ <div class="panel"><h3>How to use this portal</h3><p class="hint">1. Select a prediction stage. 2. Enter values within the displayed validation ranges. 3. Submit the form. 4. Review the predicted class and class probabilities.</p><div id="apiStatus" class="status">Checking API connection…</div>
+<div class="chart-section"><div class="intro"><h2>Model performance overview</h2><p>Baseline model comparison at admission time and after the first semester.</p></div><div class="chart-panel"><h3>Accuracy and Macro F1 comparison</h3><p class="hint">Model A uses admission-time features; Model B additionally uses first-semester indicators.</p><div class="chart-wrap"><canvas id="modelComparisonChart" role="img" aria-label="Model accuracy and macro F1 comparison"></canvas></div><div class="chart-legend"><span><i class="legend-dot" style="background:#2563eb"></i>Accuracy</span><span><i class="legend-dot" style="background:#16a34a"></i>Macro F1</span></div><p class="metric-note">Baseline test results — Model A Logistic Regression: Accuracy 0.5740, Macro F1 0.5509; Model B Logistic Regression: 0.6994, 0.6593; Model A Random Forest: 0.6328, 0.5065; Model B Random Forest: 0.7232, 0.6156.</p></div></div>
+</div>
 </section>
 <section id="admission" class="page">
  <div class="intro"><h2>Admission-time prediction</h2><p>Enter the 24 admission-time features required by Model A. Fields show the permitted values or observed dataset range used by the API contract.</p></div>
@@ -64,7 +68,12 @@ main{width:min(1220px,100%);margin:32px auto 48px;padding:0 24px}.page{display:n
   <div class="card"><div class="eyebrow">Model B</div><h3>After first semester</h3><p>Uses 30 features, including six first-semester indicators.</p></div>
   <div class="card"><div class="eyebrow">Output</div><h3>Three-class classification</h3><p>Dropout, Enrolled, or Graduate, with estimated probabilities for each class.</p></div>
  </div>
- <p class="notice">Important: Predictions are estimates from a machine-learning model, not guarantees or decisions about an individual student. The dataset represents one Portuguese higher-education institution, so results should not be assumed to generalize directly to every university or country. Numerical limits shown here are based on the project's data contract and observed dataset ranges.</p>
+ 
+<div class="chart-section"><div class="chart-grid">
+<div class="chart-panel"><h3>Model B: class-wise performance</h3><p class="hint">Tuned Logistic Regression · test-set Precision, Recall and F1-score.</p><div class="chart-wrap"><canvas id="classMetricsChart" role="img" aria-label="Class-wise precision recall and F1 score"></canvas></div><div class="chart-legend"><span><i class="legend-dot" style="background:#2563eb"></i>Precision</span><span><i class="legend-dot" style="background:#16a34a"></i>Recall</span><span><i class="legend-dot" style="background:#f59e0b"></i>F1-score</span></div><p class="metric-note">Dropout: P 0.80, R 0.66, F1 0.72. Enrolled: P 0.40, R 0.59, F1 0.47. Graduate: P 0.83, R 0.78, F1 0.81. Enrolled is the most challenging class.</p></div>
+<div class="chart-panel"><h3>Model B: confusion matrix</h3><p class="hint">Tuned Logistic Regression · actual rows versus predicted columns.</p><div class="matrix-wrap"><table class="confusion" aria-label="Confusion matrix"><thead><tr><th>Actual / Predicted</th><th>Dropout</th><th>Enrolled</th><th>Graduate</th></tr></thead><tbody><tr><th>Dropout</th><td class="diag">187</td><td class="off">67</td><td class="off">30</td></tr><tr><th>Enrolled</th><td class="off">25</td><td class="diag">94</td><td class="off">40</td></tr><tr><th>Graduate</th><td class="off">21</td><td class="off">76</td><td class="diag">345</td></tr></tbody></table></div><p class="metric-note">Diagonal cells are correct predictions. The model most often confuses Graduate with Enrolled (76 cases).</p></div>
+</div><p class="metric-note">These are fixed evaluation charts. Individual prediction probabilities are shown separately on each prediction result.</p></div>
+<p class="notice">Important: Predictions are estimates from a machine-learning model, not guarantees or decisions about an individual student. The dataset represents one Portuguese higher-education institution, so results should not be assumed to generalize directly to every university or country. Numerical limits shown here are based on the project's data contract and observed dataset ranges.</p>
 </section>
 </main>
 <footer>Student Dropout Prediction · Machine Learning Project</footer>
@@ -105,7 +114,8 @@ function renderResult(target,data){
  const probs=data.probabilities||{};const order=["Dropout","Enrolled","Graduate"];
  el.innerHTML=`<div class="eyebrow">${data.prediction_stage||data.model||"Prediction result"}</div><div class="prediction">${data.prediction}</div><h3>Class probabilities</h3>`+
  order.map(name=>{const val=Number(probs[name]||0);return `<div class="prob"><div class="prob-head"><span>${name}</span><span>${(val*100).toFixed(2)}%</span></div><div class="track"><div class="fill" style="width:${Math.max(0,Math.min(100,val*100))}%"></div></div></div>`;}).join("")+
- `<p class="notice">Probabilities are model estimates and should be interpreted as decision-support information, not certainty.</p>`;
+ `<div class="result-chart"><h3>Your prediction probability chart</h3><div class="chart-wrap"><canvas id="${target}_probabilityChart" role="img" aria-label="Current prediction probabilities"></canvas></div></div>`+
+  `<p class="notice">Probabilities are model estimates and should be interpreted as decision-support information, not certainty.</p>`;
  el.scrollIntoView({behavior:"smooth",block:"start"});
 }
 async function submitPrediction(event,endpoint,resultId){
@@ -124,7 +134,24 @@ document.getElementById("admissionForm").addEventListener("submit",e=>submitPred
 document.getElementById("semesterForm").addEventListener("submit",e=>submitPrediction(e,"/predict/semester1","semesterResult"));
 document.getElementById("admissionForm").addEventListener("reset",()=>document.getElementById("admissionResult").className="result");
 document.getElementById("semesterForm").addEventListener("reset",()=>document.getElementById("semesterResult").className="result");
+
+function drawBars(id,labels,series,max=1){
+ const c=document.getElementById(id);if(!c)return;const ctx=c.getContext("2d"),dpr=devicePixelRatio||1,w=Math.max(300,c.parentElement.clientWidth),h=280;
+ c.width=w*dpr;c.height=h*dpr;c.style.height=h+"px";ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+ const l=40,r=10,t=18,b=50,pw=w-l-r,ph=h-t-b;ctx.font="11px Arial";ctx.textAlign="right";ctx.textBaseline="middle";
+ for(let n=0;n<=4;n++){let y=t+ph-n*ph/4;ctx.strokeStyle="#e2e8f0";ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(w-r,y);ctx.stroke();ctx.fillStyle="#64748b";ctx.fillText((max*n/4).toFixed(2),l-6,y);}
+ const gw=pw/labels.length,iw=Math.min(gw*.72,series.length*24),gap=4,bw=Math.max(7,(iw-(series.length-1)*gap)/series.length);
+ labels.forEach((lab,i)=>{let x0=l+i*gw+(gw-iw)/2;series.forEach((s,j)=>{let bh=Math.max(0,Math.min(ph,s.values[i]/max*ph));ctx.fillStyle=s.color;ctx.fillRect(x0+j*(bw+gap),t+ph-bh,bw,bh);});ctx.fillStyle="#475569";ctx.textAlign="center";ctx.textBaseline="top";ctx.fillText(lab,l+i*gw+gw/2,t+ph+9);});
+}
+function initCharts(){
+ drawBars("modelComparisonChart",["A LR","B LR","A RF","B RF"],[{color:"#2563eb",values:[.574011,.699435,.632768,.723164]},{color:"#16a34a",values:[.550855,.659318,.506535,.615587]}]);
+ drawBars("classMetricsChart",["Dropout","Enrolled","Graduate"],[{color:"#2563eb",values:[.80,.40,.83]},{color:"#16a34a",values:[.66,.59,.78]},{color:"#f59e0b",values:[.72,.47,.81]}]);
+}
+function drawPrediction(id,p){drawBars(id,["Dropout","Enrolled","Graduate"],[{color:"#2563eb",values:["Dropout","Enrolled","Graduate"].map(k=>Number(p[k]||0))}],1);}
+window.addEventListener("resize",initCharts);
+
 async function checkApi(){const box=document.getElementById("apiStatus");try{const r=await fetch(API_BASE+"/health");if(!r.ok)throw new Error("API returned "+r.status);const d=await r.json();box.className="status ok";box.textContent=`API connection: ${d.status}. Model A: ${d.model_A}; Model B: ${d.model_B}.`;}catch(e){box.className="status bad";box.textContent="API connection could not be confirmed. The service may be waking up; refresh in a moment.";}}
+initCharts();
 checkApi();
 </script>
 </body>

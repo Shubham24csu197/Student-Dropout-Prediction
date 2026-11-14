@@ -1,5 +1,4 @@
 
-import pandas as pd
 import pytest
 
 from fastapi.testclient import TestClient
@@ -13,25 +12,24 @@ from schemas import (
 
 client = TestClient(app)
 
-# Load one real student record for testing
-df = pd.read_csv("data/student_dropout_cleaned.csv")
-student = df.iloc[0]
-
 
 def create_payload(schema):
-    """Create valid JSON input from a real dataset row."""
+    """Generate valid test data using the data contract."""
 
     payload = {}
 
     for field in schema.model_fields.values():
         feature = field.alias
-        value = student[feature]
-        feature_type = DATA_CONTRACT[feature]["type"]
+        details = DATA_CONTRACT[feature]
 
-        if feature_type in ("categorical", "ordinal"):
-            payload[feature] = int(value)
+        if details["type"] in ("categorical", "ordinal"):
+            payload[feature] = details["allowed_values"][0]
+
         else:
-            payload[feature] = float(value)
+            minimum = details["minimum"]
+            maximum = details["maximum"]
+
+            payload[feature] = (minimum + maximum) / 2
 
     return payload
 
@@ -145,7 +143,11 @@ def test_invalid_category(admission_payload):
 
     assert response.status_code == 422
 
-def test_stronger_student_has_higher_graduate_probability(admission_payload):
+
+# TEST 7: Domain logic
+def test_stronger_student_has_higher_graduate_probability(
+    admission_payload
+):
     weaker_student = admission_payload.copy()
     stronger_student = admission_payload.copy()
 
@@ -176,7 +178,12 @@ def test_stronger_student_has_higher_graduate_probability(admission_payload):
     assert weaker_response.status_code == 200
     assert stronger_response.status_code == 200
 
-    weaker_probability = weaker_response.json()["probabilities"]["Graduate"]
-    stronger_probability = stronger_response.json()["probabilities"]["Graduate"]
+    weaker_probability = (
+        weaker_response.json()["probabilities"]["Graduate"]
+    )
+
+    stronger_probability = (
+        stronger_response.json()["probabilities"]["Graduate"]
+    )
 
     assert stronger_probability > weaker_probability

@@ -49,9 +49,8 @@ def test_home_endpoint():
     response = client.get("/")
 
     assert response.status_code == 200
-    assert response.json()["message"] == (
-        "Student Dropout Prediction API is running!"
-    )
+    assert "text/html" in response.headers["content-type"]
+    assert "Student Dropout Prediction" in response.text
 
 
 # TEST 2: Health endpoint

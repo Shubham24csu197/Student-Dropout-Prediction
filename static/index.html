@@ -1,11 +1,146 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Student Dropout Prediction API</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Outcome Predictor</title>
+<style>
+:root{--navy:#102a56;--blue:#2563eb;--blue2:#1d4ed8;--pale:#eff6ff;--ink:#172033;--muted:#64748b;--line:#e2e8f0;--bg:#f5f8fc;--white:#fff;--green:#15803d;--red:#b91c1c}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,Segoe UI,Arial,sans-serif}
+header{background:linear-gradient(120deg,#102a56,#1e40af);color:white;padding:22px max(24px,calc((100% - 1180px)/2));}
+.brand{font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#bfdbfe;font-weight:700}
+header h1{font-size:clamp(24px,4vw,34px);margin:10px 0 7px}header p{margin:0;color:#dbeafe;max-width:760px;line-height:1.6}
+nav{background:white;border-bottom:1px solid var(--line);padding:0 max(24px,calc((100% - 1180px)/2));display:flex;gap:8px;overflow:auto}
+nav button{border:0;background:none;padding:16px 18px;color:var(--muted);font-weight:700;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+nav button.active{color:var(--blue);border-color:var(--blue)}
+main{max-width:1180px;margin:30px auto;padding:0 22px}.page{display:none}.page.active{display:block}
+.intro{margin-bottom:22px}.intro h2{margin:0 0 8px;font-size:25px}.intro p{margin:0;color:var(--muted);line-height:1.6}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:22px 0}
+.card,.panel{background:white;border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 3px 12px #0f172a08}
+.card .eyebrow{color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px}.card h3{margin:10px 0 6px;font-size:19px}.card p{color:var(--muted);line-height:1.5;margin:0}
+.card .num{font-size:28px;color:var(--blue);font-weight:800}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.primary,.secondary{border:0;border-radius:9px;padding:12px 18px;font-weight:700;cursor:pointer}
+.primary{background:var(--blue);color:white}.primary:hover{background:var(--blue2)}.secondary{background:var(--pale);color:var(--blue)}
+.form-panel{background:white;border:1px solid var(--line);border-radius:14px;padding:22px;margin:18px 0}
+.form-panel h3{margin:0 0 5px}.hint{font-size:13px;color:var(--muted);margin:0 0 18px;line-height:1.5}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:15px}
+.field label{display:block;font-size:13px;font-weight:700;margin-bottom:7px}.field input,.field select{width:100%;padding:11px 12px;border:1px solid #cbd5e1;border-radius:8px;background:white;color:var(--ink);font-size:14px}
+.field input:focus,.field select:focus{outline:2px solid #bfdbfe;border-color:var(--blue)}
+.range{font-size:11px;color:var(--muted);margin-top:5px}
+.status{padding:12px 14px;border-radius:9px;background:#f1f5f9;color:var(--muted);margin:14px 0;font-size:13px}
+.status.ok{background:#ecfdf5;color:var(--green)}.status.bad{background:#fef2f2;color:var(--red)}
+.result{display:none;margin-top:20px}.result.show{display:block}.prediction{font-size:26px;font-weight:800;color:var(--navy);margin:7px 0 18px}
+.prob{margin:14px 0}.prob-head{display:flex;justify-content:space-between;font-size:14px;font-weight:700;margin-bottom:7px}
+.track{height:11px;border-radius:20px;background:#e2e8f0;overflow:hidden}.fill{height:100%;background:linear-gradient(90deg,#60a5fa,#1d4ed8);border-radius:20px}
+.notice{font-size:12px;color:var(--muted);line-height:1.55;margin-top:18px}
+footer{text-align:center;color:var(--muted);padding:28px 18px;font-size:12px}
+.about-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px}
+@media(max-width:600px){header{padding:20px}nav{padding:0 10px}nav button{padding:14px 10px;font-size:13px}main{padding:0 14px;margin:22px auto}.form-panel{padding:16px}}
+</style>
 </head>
 <body>
-    <h1>Student Dropout Prediction API</h1>
-    <p>Deployment successful!</p>
-    <a href="/docs">Open API Documentation</a>
+<header>
+ <div class="brand">Student Success Analytics</div>
+ <h1>Student Dropout Prediction</h1>
+ <p>Machine-learning-based estimation of student academic outcomes at two stages: admission time and after the first semester.</p>
+</header>
+<nav>
+ <button class="active" data-page="dashboard">Dashboard</button>
+ <button data-page="admission">Admission Prediction</button>
+ <button data-page="semester">First-Semester Prediction</button>
+ <button data-page="about">About Project</button>
+</nav>
+<main>
+<section id="dashboard" class="page active">
+ <div class="intro"><h2>Welcome to the prediction portal</h2><p>Choose the prediction stage based on the information available. Model A uses admission-time information. Model B additionally uses first-semester academic indicators.</p></div>
+ <div class="cards">
+  <div class="card"><div class="eyebrow">Prediction stage 01</div><h3>Admission-time prediction</h3><p>Estimate the likely academic outcome using information available at admission.</p><div class="actions"><button class="primary" onclick="showPage('admission')">Open Model A</button></div></div>
+  <div class="card"><div class="eyebrow">Prediction stage 02</div><h3>After first semester</h3><p>Update the estimate using admission details and first-semester academic performance.</p><div class="actions"><button class="primary" onclick="showPage('semester')">Open Model B</button></div></div>
+  <div class="card"><div class="eyebrow">Possible outcomes</div><div class="num">03</div><h3>Three classes</h3><p>Dropout · Enrolled · Graduate</p></div>
+ </div>
+ <div class="panel"><h3>How to use this portal</h3><p class="hint">1. Select a prediction stage. 2. Enter values within the displayed validation ranges. 3. Submit the form. 4. Review the predicted class and class probabilities.</p><div id="apiStatus" class="status">Checking API connection…</div></div>
+</section>
+<section id="admission" class="page">
+ <div class="intro"><h2>Admission-time prediction</h2><p>Enter the 24 admission-time features required by Model A. Fields show the permitted values or observed dataset range used by the API contract.</p></div>
+ <form id="admissionForm"><div id="admissionFields"></div><button class="primary" type="submit">Predict with Model A</button><button class="secondary" type="reset">Reset form</button></form>
+ <div id="admissionResult" class="result panel"></div>
+</section>
+<section id="semester" class="page">
+ <div class="intro"><h2>First-semester prediction</h2><p>Enter the same admission-time details plus six first-semester academic indicators required by Model B.</p></div>
+ <form id="semesterForm"><div id="semesterFields"></div><button class="primary" type="submit">Predict with Model B</button><button class="secondary" type="reset">Reset form</button></form>
+ <div id="semesterResult" class="result panel"></div>
+</section>
+<section id="about" class="page">
+ <div class="intro"><h2>About this project</h2><p>Early Prediction of Student Dropout and Academic Success Using Machine Learning.</p></div>
+ <div class="about-grid">
+  <div class="card"><div class="eyebrow">Dataset</div><h3>UCI Student Dropout</h3><p>Predict Students' Dropout and Academic Success dataset from the UCI Machine Learning Repository.</p></div>
+  <div class="card"><div class="eyebrow">Model A</div><h3>Admission-time model</h3><p>Uses 24 features available at the admission stage.</p></div>
+  <div class="card"><div class="eyebrow">Model B</div><h3>After first semester</h3><p>Uses 30 features, including six first-semester indicators.</p></div>
+  <div class="card"><div class="eyebrow">Output</div><h3>Three-class classification</h3><p>Dropout, Enrolled, or Graduate, with estimated probabilities for each class.</p></div>
+ </div>
+ <p class="notice">Important: Predictions are estimates from a machine-learning model, not guarantees or decisions about an individual student. The dataset represents one Portuguese higher-education institution, so results should not be assumed to generalize directly to every university or country. Numerical limits shown here are based on the project's data contract and observed dataset ranges.</p>
+</section>
+</main>
+<footer>Student Dropout Prediction · Machine Learning Project</footer>
+<script>
+const CONTRACT = {"Marital status":{"type":"categorical","allowed_values":[1,2,3,4,5,6]},"Application mode":{"type":"categorical","allowed_values":[1,2,5,7,10,15,16,17,18,26,27,39,42,43,44,51,53,57]},"Course":{"type":"categorical","allowed_values":[33,171,8014,9003,9070,9085,9119,9130,9147,9238,9254,9500,9556,9670,9773,9853,9991]},"Previous qualification":{"type":"categorical","allowed_values":[1,2,3,4,5,6,9,10,12,14,15,19,38,39,40,42,43]},"Nationality":{"type":"categorical","allowed_values":[1,2,6,11,13,14,17,21,22,24,25,26,32,41,62,100,101,103,105,108,109]},"Mother's qualification":{"type":"categorical","allowed_values":[1,2,3,4,5,6,9,10,11,12,14,18,19,22,26,27,29,30,34,35,36,37,38,39,40,41,42,43,44]},"Father's qualification":{"type":"categorical","allowed_values":[1,2,3,4,5,6,9,10,11,12,13,14,18,19,20,22,25,26,27,29,30,31,33,34,35,36,37,38,39,40,41,42,43,44]},"Mother's occupation":{"type":"categorical","allowed_values":[0,1,2,3,4,5,6,7,8,9,10,90,99,122,123,125,131,132,134,141,143,144,151,152,153,171,173,175,191,192,193,194]},"Father's occupation":{"type":"categorical","allowed_values":[0,1,2,3,4,5,6,7,8,9,10,90,99,101,102,103,112,114,121,122,123,124,131,132,134,135,141,143,144,151,152,153,154,161,163,171,172,174,175,181,182,183,192,193,194,195]},"Daytime/evening attendance":{"type":"categorical","allowed_values":[0,1]},"Displaced":{"type":"categorical","allowed_values":[0,1]},"Educational special needs":{"type":"categorical","allowed_values":[0,1]},"Debtor":{"type":"categorical","allowed_values":[0,1]},"Tuition fees up to date":{"type":"categorical","allowed_values":[0,1]},"Gender":{"type":"categorical","allowed_values":[0,1]},"Scholarship holder":{"type":"categorical","allowed_values":[0,1]},"International":{"type":"categorical","allowed_values":[0,1]},"Application order":{"type":"ordinal","minimum":0,"maximum":9,"allowed_values":[0,1,2,3,4,5,6,9]},"Previous qualification (grade)":{"type":"numerical","minimum":95.0,"maximum":190.0},"Admission grade":{"type":"numerical","minimum":95.0,"maximum":190.0},"Age at enrollment":{"type":"numerical","minimum":17.0,"maximum":70.0},"Unemployment rate":{"type":"numerical","minimum":7.6,"maximum":16.2},"Inflation rate":{"type":"numerical","minimum":-0.8,"maximum":3.7},"GDP":{"type":"numerical","minimum":-4.06,"maximum":3.51},"Curricular units 1st sem (credited)":{"type":"numerical","minimum":0.0,"maximum":20.0},"Curricular units 1st sem (enrolled)":{"type":"numerical","minimum":0.0,"maximum":26.0},"Curricular units 1st sem (evaluations)":{"type":"numerical","minimum":0.0,"maximum":45.0},"Curricular units 1st sem (approved)":{"type":"numerical","minimum":0.0,"maximum":26.0},"Curricular units 1st sem (grade)":{"type":"numerical","minimum":0.0,"maximum":18.875},"Curricular units 1st sem (without evaluations)":{"type":"numerical","minimum":0.0,"maximum":12.0}};
+const API_BASE = ""; // Same Render service serves both this website and the API.
+const admissionKeys = Object.keys(CONTRACT).filter(k => !k.startsWith("Curricular units 1st sem"));
+const semesterKeys = Object.keys(CONTRACT);
+const sectionNames = {
+ "Marital status":"Personal & admission details","Application mode":"Personal & admission details",
+ "Curricular units 1st sem (credited)":"First-semester academic indicators"
+};
+function showPage(id){document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id===id));document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===id));window.scrollTo({top:0,behavior:"smooth"});}
+document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.page)));
+function pretty(k){return k.replaceAll("1st sem","1st Semester");}
+function buildForm(containerId, keys){
+ const root=document.getElementById(containerId); let currentSection="";
+ keys.forEach((key,i)=>{
+  const meta=CONTRACT[key]; const section=key.startsWith("Curricular units 1st sem")?"First-semester academic indicators":"Admission information";
+  if(section!==currentSection){const panel=document.createElement("div");panel.className="form-panel";panel.innerHTML=`<h3>${section}</h3><p class="hint">${section==="Admission information"?"Enter the student's admission-time information.":"Enter academic indicators recorded after the first semester."}</p><div class="fields"></div>`;root.appendChild(panel);currentSection=section;}
+  const fields=root.lastElementChild.querySelector(".fields");const wrap=document.createElement("div");wrap.className="field";
+  const label=document.createElement("label");label.textContent=pretty(key);label.htmlFor=containerId+"_"+i;wrap.appendChild(label);
+  let input;
+  if(meta.type==="categorical"||meta.type==="ordinal"){
+   input=document.createElement("select");(meta.allowed_values||[]).forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=String(v);input.appendChild(o);});
+  }else{
+   input=document.createElement("input");input.type="number";input.step="any";input.min=meta.minimum;input.max=meta.maximum;
+   input.value=Number(((meta.minimum+meta.maximum)/2).toFixed(2));
+   const range=document.createElement("div");range.className="range";range.textContent=`Allowed range: ${meta.minimum} to ${meta.maximum}`;wrap.appendChild(range);
+  }
+  input.id=containerId+"_"+i;input.name=key;input.required=true;wrap.appendChild(input);fields.appendChild(wrap);
+ });
+}
+buildForm("admissionFields",admissionKeys);buildForm("semesterFields",semesterKeys);
+function getPayload(form){const payload={};new FormData(form).forEach((v,k)=>{payload[k]=Number(v);});return payload;}
+function renderResult(target,data){
+ const el=document.getElementById(target);el.className="result panel show";
+ const probs=data.probabilities||{};const order=["Dropout","Enrolled","Graduate"];
+ el.innerHTML=`<div class="eyebrow">${data.prediction_stage||data.model||"Prediction result"}</div><div class="prediction">${data.prediction}</div><h3>Class probabilities</h3>`+
+ order.map(name=>{const val=Number(probs[name]||0);return `<div class="prob"><div class="prob-head"><span>${name}</span><span>${(val*100).toFixed(2)}%</span></div><div class="track"><div class="fill" style="width:${Math.max(0,Math.min(100,val*100))}%"></div></div></div>`;}).join("")+
+ `<p class="notice">Probabilities are model estimates and should be interpreted as decision-support information, not certainty.</p>`;
+ el.scrollIntoView({behavior:"smooth",block:"start"});
+}
+async function submitPrediction(event,endpoint,resultId){
+ event.preventDefault();const form=event.currentTarget;const button=form.querySelector('button[type="submit"]');const original=button.textContent;
+ button.disabled=true;button.textContent="Predicting…";
+ const result=document.getElementById(resultId);result.className="result panel show";result.textContent="Sending data to the prediction API…";
+ try{
+  const response=await fetch(API_BASE+endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(getPayload(form))});
+  const data=await response.json();
+  if(!response.ok){const details=(data.detail||[]).map(x=>`${(x.loc||[]).slice(1).join(" → ")}: ${x.msg}`).join("\n");throw new Error(details||JSON.stringify(data));}
+  renderResult(resultId,data);
+ }catch(err){result.className="result panel show";result.innerHTML=`<div style="color:#b91c1c;font-weight:800">Prediction could not be completed</div><p class="notice"></p>`;result.querySelector("p").textContent=err.message+" If this is the first request after inactivity, wait a little and try again.";}
+ finally{button.disabled=false;button.textContent=original;}
+}
+document.getElementById("admissionForm").addEventListener("submit",e=>submitPrediction(e,"/predict/admission","admissionResult"));
+document.getElementById("semesterForm").addEventListener("submit",e=>submitPrediction(e,"/predict/semester1","semesterResult"));
+document.getElementById("admissionForm").addEventListener("reset",()=>document.getElementById("admissionResult").className="result");
+document.getElementById("semesterForm").addEventListener("reset",()=>document.getElementById("semesterResult").className="result");
+async function checkApi(){const box=document.getElementById("apiStatus");try{const r=await fetch(API_BASE+"/health");if(!r.ok)throw new Error("API returned "+r.status);const d=await r.json();box.className="status ok";box.textContent=`API connection: ${d.status}. Model A: ${d.model_A}; Model B: ${d.model_B}.`;}catch(e){box.className="status bad";box.textContent="API connection could not be confirmed. The service may be waking up; refresh in a moment.";}}
+checkApi();
+</script>
 </body>
 </html>

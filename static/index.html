@@ -36,6 +36,7 @@ main{width:min(1220px,100%);margin:32px auto 48px;padding:0 24px}.page{display:n
  <button class="active" data-page="dashboard">Dashboard</button>
  <button data-page="admission">Admission Prediction</button>
  <button data-page="semester">First-Semester Prediction</button>
+ <button data-page="upload">Document Upload</button>
  <button data-page="about">About Project</button>
 </nav>
 <main>
@@ -59,6 +60,21 @@ main{width:min(1220px,100%);margin:32px auto 48px;padding:0 24px}.page{display:n
  <div class="intro"><h2>First-semester prediction</h2><p>Enter the same admission-time details plus six first-semester academic indicators required by Model B.</p></div>
  <form id="semesterForm"><div id="semesterFields"></div><button class="primary" type="submit">Predict with Model B</button><button class="secondary" type="reset">Reset form</button></form>
  <div id="semesterResult" class="result panel"></div>
+</section>
+<section id="upload" class="page">
+ <div class="intro"><h2>Document-based prediction</h2><p>Upload one student record. Review extracted values, defaults and validation warnings before generating a prediction.</p></div>
+ <div class="form-panel">
+  <form id="uploadForm">
+   <div class="field"><label for="uploadModel">Prediction model</label><select id="uploadModel" required><option value="Model A">Model A — Admission time</option><option value="Model B">Model B — After first semester</option></select></div>
+   <div class="field"><label for="studentFile">Student file (.xlsx, .xls, .csv, .docx, .pdf)</label><input id="studentFile" type="file" accept=".xlsx,.xls,.csv,.docx,.pdf" required></div>
+   <button class="primary" type="submit">Upload and extract data</button>
+  </form>
+  <div id="uploadMessage" class="status" style="display:none"></div>
+  <div id="uploadPreview" style="display:none;margin-top:20px"></div>
+  <button id="uploadPredict" class="primary" type="button" style="display:none;margin-top:15px">Confirm values and predict</button>
+  <div id="uploadResult" class="result panel"></div>
+ </div>
+ <p class="notice">The first data row is treated as one student. Missing fields receive training-dataset defaults. Invalid values must be corrected in the source file before prediction. Scanned PDFs are not supported in this first version.</p>
 </section>
 <section id="about" class="page">
  <div class="intro"><h2>About this project</h2><p>Early Prediction of Student Dropout and Academic Success Using Machine Learning.</p></div>
@@ -174,6 +190,154 @@ window.addEventListener("resize",initCharts);
 async function checkApi(){const box=document.getElementById("apiStatus");try{const r=await fetch(API_BASE+"/health");if(!r.ok)throw new Error("API returned "+r.status);const d=await r.json();box.className="status ok";box.textContent=`API connection: ${d.status}. Model A: ${d.model_A}; Model B: ${d.model_B}.`;}catch(e){box.className="status bad";box.textContent="API connection could not be confirmed. The service may be waking up; refresh in a moment.";}}
 initCharts();
 checkApi();
+
+let uploadedPreview = null;
+const uploadForm = document.getElementById("uploadForm");
+
+function clearUploadResult() {
+ const resultBox = document.getElementById("uploadResult");
+ resultBox.className = "result panel";
+ resultBox.innerHTML = "";
+}
+
+function resetUploadState() {
+ uploadedPreview = null;
+ clearUploadResult();
+ const preview = document.getElementById("uploadPreview");
+ const predictButton = document.getElementById("uploadPredict");
+ const message = document.getElementById("uploadMessage");
+ preview.style.display = "none";
+ preview.innerHTML = "";
+ predictButton.style.display = "none";
+ predictButton.disabled = false;
+ message.style.display = "none";
+ message.textContent = "";
+}
+
+if (uploadForm) {
+ const fileInput = document.getElementById("studentFile");
+ const modelSelect = document.getElementById("uploadModel");
+
+ // A new file or model selection invalidates the previous preview/result.
+ fileInput.addEventListener("change", resetUploadState);
+ modelSelect.addEventListener("change", resetUploadState);
+
+ uploadForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const file = fileInput.files[0];
+  const model = modelSelect.value;
+  if (!file) return;
+
+  // Clear stale prediction immediately, before starting another upload.
+  resetUploadState();
+
+  const message = document.getElementById("uploadMessage");
+  const preview = document.getElementById("uploadPreview");
+  const predictButton = document.getElementById("uploadPredict");
+  message.style.display = "block";
+  message.textContent = "Reading document…";
+
+  const form = new FormData();
+  form.append("file", file);
+  form.append("model_name", model);
+
+  try {
+   const response = await fetch(API_BASE + "/upload/preview", {
+    method: "POST",
+    body: form
+   });
+   const data = await response.json();
+
+   if (!response.ok) {
+    throw new Error(data.detail || "Upload failed");
+   }
+
+   // Keep the preview only if the API says it is safe to predict.
+   uploadedPreview = data;
+   const rows = Object.entries(data.features).map(([k, v]) =>
+    `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(String(v))}</td><td>${data.defaults_applied.some(x => x.feature === k) ? "Default applied" : "Extracted"}</td></tr>`
+   ).join("");
+
+   preview.innerHTML =
+    `<h3>Extracted feature preview</h3>
+     <p class="hint">Using row 1 of ${data.total_rows}. Model: ${escapeHtml(data.model)}</p>
+     <div style="overflow-x:auto"><table><thead><tr><th>Feature</th><th>Value</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table></div>
+     <h3>Defaults applied: ${data.defaults_applied.length}</h3>
+     <h3>Invalid values: ${data.invalid_values.length}</h3>
+     <ul>${data.invalid_values.map(x => `<li>${escapeHtml(x.feature)}: ${escapeHtml(x.value)} — ${escapeHtml(x.reason)}</li>`).join("")}</ul>
+     <p class="hint">Unmatched columns: ${data.unmatched_columns.map(escapeHtml).join(", ") || "None"}</p>`;
+
+   preview.style.display = "block";
+
+   if (data.can_predict === true && (!data.invalid_values || data.invalid_values.length === 0)) {
+    predictButton.style.display = "inline-block";
+    message.className = "status ok";
+    message.textContent = "Extraction complete. Review the values before predicting.";
+   } else {
+    // Invalid preview must never retain a usable prediction payload/button.
+    uploadedPreview = null;
+    predictButton.style.display = "none";
+    message.className = "status bad";
+    message.textContent = "Invalid values were found. Correct the source file and upload it again. Prediction is blocked.";
+    clearUploadResult();
+   }
+  } catch (error) {
+   uploadedPreview = null;
+   predictButton.style.display = "none";
+   preview.style.display = "none";
+   clearUploadResult();
+   message.className = "status bad";
+   message.textContent = error.message;
+  }
+ });
+
+ document.getElementById("uploadPredict").addEventListener("click", async () => {
+  // Defensive client-side check; the API must also validate on the server.
+  if (!uploadedPreview ||
+      uploadedPreview.can_predict !== true ||
+      (uploadedPreview.invalid_values && uploadedPreview.invalid_values.length > 0)) {
+   clearUploadResult();
+   return;
+  }
+
+  const resultBox = document.getElementById("uploadResult");
+  const predictButton = document.getElementById("uploadPredict");
+  resultBox.className = "result panel show";
+  resultBox.textContent = "Generating prediction…";
+  predictButton.disabled = true;
+
+  try {
+   const response = await fetch(API_BASE + "/upload/predict", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+     model: uploadedPreview.model,
+     features: uploadedPreview.features
+    })
+   });
+   const data = await response.json();
+
+   if (!response.ok) {
+    throw new Error(data.detail || "Prediction failed");
+   }
+
+   resultBox.innerHTML =
+    `<div class="eyebrow">${escapeHtml(data.model)} result</div>
+     <div class="prediction">${escapeHtml(data.prediction)}</div>
+     <h3>Class probabilities</h3>
+     ${Object.entries(data.probabilities).map(([k, v]) => `<p>${escapeHtml(k)}: ${(v * 100).toFixed(2)}%</p>`).join("")}
+     <p class="hint">Defaults applied: ${uploadedPreview.defaults_applied.length}. Review the extraction summary above.</p>`;
+  } catch (error) {
+   resultBox.className = "result panel show";
+   resultBox.textContent = error.message;
+  } finally {
+   predictButton.disabled = false;
+  }
+ });
+}
+function escapeHtml(value) { return String(value).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[ch])); }
+
 </script>
 </body>
 </html>

@@ -5,16 +5,19 @@ from typing import Union, List
 
 import joblib
 import pandas as pd
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
+
+from document_upload import prepare_preview, ADMISSION_FEATURES, SEMESTER_FEATURES
 
 from schemas import AdmissionRequest, Semester1Request
 
 app = FastAPI(
     title="Student Dropout Prediction API",
     description="Predict student academic outcomes using Machine Learning with MLflow tracking",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -45,7 +48,7 @@ def log_prediction_input(endpoint: str, request_data: dict, prediction: str):
         "timestamp": datetime.utcnow().isoformat(),
         "endpoint": endpoint,
         "prediction": prediction,
-        "input_features": request_data
+        "input_features": request_data,
     }
     try:
         with open(LOG_FILE, "a", encoding="utf-8") as f:
@@ -58,23 +61,50 @@ def get_rule_based_tips(prediction: str, request_data: dict) -> List[str]:
     """Provide 2-3 rule-based tips for the student (CSL236 Stage 4)."""
     tips = []
     if prediction == "Dropout":
-        tips.append("High risk detected: Schedule an academic advising and counseling session immediately.")
-        if request_data.get("Tuition fees up to date") == 0 or request_data.get("Debtor") == 1:
-            tips.append("Financial warning: Connect with the financial aid office to review tuition payment plans or scholarship opportunities.")
+        tips.append(
+            "High risk detected: Schedule an academic advising and counseling session immediately."
+        )
+        if (
+            request_data.get("Tuition fees up to date") == 0
+            or request_data.get("Debtor") == 1
+        ):
+            tips.append(
+                "Financial warning: Connect with the financial aid office to review tuition payment plans or scholarship opportunities."
+            )
         else:
-            tips.append("Academic alert: Review prerequisite syllabus and enroll in peer tutoring for challenging courses.")
-        if request_data.get("Curricular units 1st sem (approved)", 0) < request_data.get("Curricular units 1st sem (enrolled)", 1):
-            tips.append("Credit deficit: Create a recovery plan to clear unapproved curricular units next semester.")
+            tips.append(
+                "Academic alert: Review prerequisite syllabus and enroll in peer tutoring for challenging courses."
+            )
+        if request_data.get(
+            "Curricular units 1st sem (approved)", 0
+        ) < request_data.get("Curricular units 1st sem (enrolled)", 1):
+            tips.append(
+                "Credit deficit: Create a recovery plan to clear unapproved curricular units next semester."
+            )
         else:
-            tips.append("Attendance monitoring: Maintain attendance above 85% in all registered courses.")
+            tips.append(
+                "Attendance monitoring: Maintain attendance above 85% in all registered courses."
+            )
     elif prediction == "Enrolled":
-        tips.append("Borderline academic outcome: Closely track 2nd semester attendance and internal assessments.")
-        tips.append("Coursework focus: Form study groups to boost GPA and clear any pending evaluations.")
-        tips.append("Faculty mentoring: Meet your course coordinator to discuss academic milestones.")
+        tips.append(
+            "Borderline academic outcome: Closely track 2nd semester attendance and internal assessments."
+        )
+        tips.append(
+            "Coursework focus: Form study groups to boost GPA and clear any pending evaluations."
+        )
+        tips.append(
+            "Faculty mentoring: Meet your course coordinator to discuss academic milestones."
+        )
     else:  # Graduate
-        tips.append("Strong academic trajectory: Maintain current study habits and academic performance.")
-        tips.append("Career readiness: Engage with the campus placement cell for internship and project opportunities.")
-        tips.append("Skill development: Consider taking advanced electives or certifications in your domain.")
+        tips.append(
+            "Strong academic trajectory: Maintain current study habits and academic performance."
+        )
+        tips.append(
+            "Career readiness: Engage with the campus placement cell for internship and project opportunities."
+        )
+        tips.append(
+            "Skill development: Consider taking advanced electives or certifications in your domain."
+        )
     return tips[:3]
 
 
@@ -88,7 +118,7 @@ def generate_prediction(model, request_data):
         "probabilities": {
             str(label): round(float(probability), 4)
             for label, probability in zip(model.classes_, probabilities)
-        }
+        },
     }
 
 
@@ -104,7 +134,7 @@ def health():
         "model": "loaded",
         "model_A": "loaded",
         "model_B": "loaded",
-        "logging": "enabled"
+        "logging": "enabled",
     }
 
 
@@ -124,12 +154,7 @@ def predict(data: Union[Semester1Request, AdmissionRequest]):
     log_prediction_input("/predict", request_data, result["prediction"])
     tips = get_rule_based_tips(result["prediction"], request_data)
 
-    return {
-        "prediction_stage": stage,
-        "model": model_name,
-        "tips": tips,
-        **result
-    }
+    return {"prediction_stage": stage, "model": model_name, "tips": tips, **result}
 
 
 @app.post("/predict/admission")
@@ -143,7 +168,7 @@ def predict_admission(data: AdmissionRequest):
         "prediction_stage": "Admission Time",
         "model": "Model A",
         "tips": tips,
-        **result
+        **result,
     }
 
 
@@ -158,5 +183,40 @@ def predict_semester1(data: Semester1Request):
         "prediction_stage": "After First Semester",
         "model": "Model B",
         "tips": tips,
-        **result
+        **result,
+    }
+
+
+@app.post("/upload/preview")
+async def upload_preview(file: UploadFile = File(...), model_name: str = Form(...)):
+    if model_name not in ("Model A", "Model B"):
+        raise HTTPException(
+            status_code=400, detail="model_name must be Model A or Model B"
+        )
+    content = await file.read()
+    return prepare_preview(file.filename or "upload", content, model_name)
+
+
+@app.post("/upload/predict")
+def upload_predict(payload: dict):
+    model_name = payload.get("model")
+    features = payload.get("features")
+    if model_name not in ("Model A", "Model B") or not isinstance(features, dict):
+        raise HTTPException(
+            status_code=422, detail="Provide model and extracted features"
+        )
+    schema = AdmissionRequest if model_name == "Model A" else Semester1Request
+    try:
+        validated = schema.model_validate(features)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    request_data = validated.model_dump(by_alias=True)
+    model = model_A if model_name == "Model A" else model_B
+    result = generate_prediction(model, request_data)
+    return {
+        "prediction_stage": (
+            "Admission Time" if model_name == "Model A" else "After First Semester"
+        ),
+        "model": model_name,
+        **result,
     }

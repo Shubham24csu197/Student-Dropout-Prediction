@@ -9,7 +9,9 @@ RUN pip install --no-cache-dir -r requirements-serve.txt
 
 COPY app.py .
 COPY schemas.py .
+COPY document_upload.py .
 COPY data_contract.json .
+COPY upload_defaults.json .
 COPY model/ ./model/
 COPY static/ ./static/
 

@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from fastapi import UploadFile, File, Form, HTTPException
+from document_upload import prepare_preview, ADMISSION_FEATURES, SEMESTER_FEATURES
 import joblib
 import pandas as pd
 from pathlib import Path
@@ -75,3 +77,28 @@ def predict_semester1(data: Semester1Request):
         "model": "Model B",
         **result
     }
+
+
+@app.post("/upload/preview")
+async def upload_preview(file: UploadFile = File(...), model_name: str = Form(...)):
+    if model_name not in ("Model A", "Model B"):
+        raise HTTPException(status_code=400, detail="model_name must be Model A or Model B")
+    content = await file.read()
+    return prepare_preview(file.filename or "upload", content, model_name)
+
+
+@app.post("/upload/predict")
+def upload_predict(payload: dict):
+    model_name = payload.get("model")
+    features = payload.get("features")
+    if model_name not in ("Model A", "Model B") or not isinstance(features, dict):
+        raise HTTPException(status_code=422, detail="Provide model and extracted features")
+    schema = AdmissionRequest if model_name == "Model A" else Semester1Request
+    try:
+        validated = schema.model_validate(features)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    request_data = validated.model_dump(by_alias=True)
+    model = model_A if model_name == "Model A" else model_B
+    result = generate_prediction(model, request_data)
+    return {"prediction_stage": "Admission Time" if model_name == "Model A" else "After First Semester", "model": model_name, **result}

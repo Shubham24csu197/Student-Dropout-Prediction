@@ -107,6 +107,8 @@ def test_semester1_prediction(semester1_payload):
     assert result["prediction"] in [
         "Dropout", "Enrolled", "Graduate"
     ]
+    assert "tips" in result
+    assert len(result["tips"]) >= 2
 
     probabilities = result["probabilities"]
 
@@ -117,6 +119,20 @@ def test_semester1_prediction(semester1_payload):
     assert sum(probabilities.values()) == pytest.approx(
         1.0, abs=0.0002
     )
+
+
+# TEST 4b: Standard /predict endpoint
+def test_standard_predict_endpoint(semester1_payload):
+    response = client.post(
+        "/predict",
+        json=semester1_payload
+    )
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["prediction"] in ["Dropout", "Enrolled", "Graduate"]
+    assert "tips" in result
+    assert len(result["tips"]) >= 2
 
 
 # TEST 5: Invalid age should return HTTP 422

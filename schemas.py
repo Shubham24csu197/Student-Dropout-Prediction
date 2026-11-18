@@ -1,5 +1,6 @@
 
 import json
+from pathlib import Path
 from typing import Literal, Annotated
 
 from pydantic import (
@@ -10,7 +11,8 @@ from pydantic import (
 )
 
 # Load the inspected dataset contract
-with open("data_contract.json", "r") as file:
+BASE_DIR = Path(__file__).resolve().parent
+with open(BASE_DIR / "data_contract.json", "r") as file:
     DATA_CONTRACT = json.load(file)
 
 
